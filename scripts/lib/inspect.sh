@@ -78,7 +78,7 @@ binding_gyps = glob.glob(os.path.join(work, "node_modules", "**", "binding.gyp")
 mod_nodes = defaultdict(list)
 for n in node_files + unpacked_node_files:
     mod_nodes[module_of(n)].append(n)
-mod_gyp = sorted({module_of(g) for g in binding_gyp})
+mod_gyp = sorted({module_of(g) for g in binding_gyps})
 report["native_modules"] = {
     "node_file_count": len(node_files) + len(unpacked_node_files),
     "by_module": {k: {"node_files": [os.path.relpath(x, work) for x in v]} for k, v in mod_nodes.items()},

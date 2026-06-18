@@ -35,6 +35,7 @@ strip_non_linux_natives() {
 	[ -d "$dir" ] || die "no extracted dir to strip"
 	info "stripping non-Linux native artifacts..."
 
+	# ── (1) main asar tree ──────────────────────────────────────────────────
 	# Darwin sibling packages that have Linux equivalents installed elsewhere.
 	# Keep this a glob so future arch suffixes are covered.
 	rm -rf "$dir/node_modules/@minify-html/node-darwin-"* 2>/dev/null || true
@@ -60,7 +61,43 @@ strip_non_linux_natives() {
 	       "$dir/node_modules/node-mac-permissions" 2>/dev/null || true
 	find "$dir" -name "sparkle.node" -delete 2>/dev/null || true
 
-	# Legacy node-pty (not present in Kimi, but harmless if it ever ships).
+	# ── (2) gateway tree (outside the asar, processed in place) ─────────────
+	# The gateway node_modules lives at Contents/Resources/resources/gateway/.
+	# It was populated with linux siblings by install_linux_prebuilds; now drop
+	# the darwin leftovers so the loader picks the linux ones.
+	local gw_nm="${APP_BUNDLE_DIR:-}/Contents/Resources/resources/gateway/node_modules"
+	if [ -d "$gw_nm" ]; then
+		info "stripping darwin natives from gateway tree..."
+		# darwin sibling packages (now superseded by their linux counterparts)
+		rm -rf "$gw_nm/@mariozechner/clipboard-darwin-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@snazzah/davey-darwin-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@napi-rs/canvas-darwin-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@lydell/node-pty-darwin-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@img/sharp-darwin-"* 2>/dev/null || true
+		rm -rf "$gw_nm/sharp-darwin-"* 2>/dev/null || true
+		# sqlite-vec darwin sibling (superseded by sqlite-vec-linux-<arch>)
+		rm -rf "$gw_nm/sqlite-vec-darwin-"* 2>/dev/null || true
+		# node-pty spawn-helper is a conpty fallback helper (win/mac only);
+		# Linux uses pty.node's forkpty() directly, so drop any stray helper.
+		find "$gw_nm/@lydell/node-pty-"* -name "spawn-helper" -delete 2>/dev/null || true
+		# koffi: keep only the linux_<arch> build dir, drop the others
+		if [ -d "$gw_nm/koffi/build/koffi" ]; then
+			find "$gw_nm/koffi/build/koffi" -maxdepth 1 -type d \
+				! -name "koffi" \
+				! -name "linux_$(detect_arch)" \
+				-exec rm -rf {} + 2>/dev/null || true
+		fi
+		# win32 siblings if present
+		rm -rf "$gw_nm/@mariozechner/clipboard-win32-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@snazzah/davey-win32-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@napi-rs/canvas-win32-"* 2>/dev/null || true
+		rm -rf "$gw_nm/@img/sharp-win32-"* 2>/dev/null || true
+		# fsevents in gateway if present
+		rm -rf "$gw_nm/fsevents" 2>/dev/null || true
+		find "$gw_nm" -path "*/fsevents/*.node" -delete 2>/dev/null || true
+	fi
+
+	# Legacy node-pty cleanup (defensive; not in Kimi's main tree).
 	rm -rf "$dir/node_modules/node-pty/prebuilds/darwin-"* \
 	       "$dir/node_modules/node-pty/prebuilds/win32-"* \
 	       "$dir/node_modules/node-pty/bin" \

@@ -145,10 +145,18 @@ extract_dmg() {
 	mkdir -p "$extract_dir"
 
 	info "extracting DMG with $SEVEN_ZIP_CMD..."
-	"$SEVEN_ZIP_CMD" x -y -snl "$dmg" -o"$extract_dir" >/dev/null
+	# 7zz returns exit 2 when it skips "dangerous" symlink targets (absolute
+	# or ../ escaping the extract root). Kimi Work's gateway node_modules/.bin/
+	# has many such symlinks; they are dev-tool shims not needed at runtime,
+	# so we tolerate exit code 2 as long as the .app bundle is present.
+	local rc=0
+	"$SEVEN_ZIP_CMD" x -y -snl "$dmg" -o"$extract_dir" >/dev/null 2>&1 || rc=$?
+	if [ "$rc" != 0 ] && [ "$rc" != 2 ]; then
+		die "7zz extraction failed (exit $rc)"
+	fi
 
 	APP_BUNDLE_DIR="$(find "$extract_dir" -maxdepth 4 -name "*.app" -type d 2>/dev/null | head -n1)"
-	[ -n "$APP_BUNDLE_DIR" ] || die "no .app bundle found in DMG (extract dir: $extract_dir)"
+	[ -n "$APP_BUNDLE_DIR" ] || die "no .app bundle found in DMG (extract dir: $extract_dir; 7zz exit $rc)"
 	info "app bundle: $APP_BUNDLE_DIR"
 	export APP_BUNDLE_DIR
 }
