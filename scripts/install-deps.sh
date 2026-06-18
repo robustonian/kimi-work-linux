@@ -71,11 +71,20 @@ main() {
 	local pkgs=(curl python3 unzip)
 	case "$pm" in
 		apt)
+			# On Ubuntu 24.04+ several libs were renamed to a *t64 variant
+			# (libasound2 → libasound2t64, libatk1.0-0 → libatk1.0-0t64, …)
+			# and the old name is no longer installable. Pass both names as an
+			# apt alternative ("pkg|pkg") so apt picks whichever is available —
+			# the same idiom used in our .deb control file's Depends line.
 			pkgs+=(build-essential pkg-config dpkg-dev python3-pil fonts-dejavu-core \
-			       libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+			       libnss3 libnspr4 \
+			       "libatk1.0-0|libatk1.0-0t64" \
+			       "libatk-bridge2.0-0|libatk-bridge2.0-0t64" \
+			       "libcups2|libcups2t64" \
 			       libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
-			       libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 \
-			       libatspi2.0-0)
+			       libxrandr2 libgbm1 libpango-1.0-0 libcairo2 \
+			       "libasound2|libasound2t64" \
+			       "libatspi2.0-0|libatspi2.0-0t64")
 			sudo apt-get update -y
 			sudo apt-get install -y "${pkgs[@]}"
 			;;
