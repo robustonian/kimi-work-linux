@@ -42,6 +42,14 @@ stage_common_package_files() {
 	mkdir -p "$opt_root"
 	cp -a "$app_dir/." "$opt_root/"
 
+	# Remove macOS extended-attribute files (names contain a colon, e.g.
+	# "filename:com.apple.provenance"). These are illegal in CI artifact
+	# uploads and serve no purpose on Linux.
+	find "$opt_root" -type f -name '*:*' -delete 2>/dev/null || true
+
+	# Remove AppleDouble resource-fork shadow files (._*).
+	find "$opt_root" -type f -name '._*' -delete 2>/dev/null || true
+
 	# /usr/bin launcher shim
 	mkdir -p "$root/usr/bin"
 	cat > "$root/usr/bin/$PACKAGE_NAME" <<EOF
