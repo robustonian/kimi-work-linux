@@ -32,7 +32,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             curl python3 unzip make build-essential \
-            dpkg-dev python3-pil
+            dpkg-dev python3-pil libfuse2
 
       - name: Install project dependencies
         run: make install-deps
