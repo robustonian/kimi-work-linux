@@ -155,7 +155,18 @@ extract_dmg() {
 		die "7zz extraction failed (exit $rc)"
 	fi
 
-	APP_BUNDLE_DIR="$(find "$extract_dir" -maxdepth 4 -name "*.app" -type d 2>/dev/null | head -n1)"
+	# Find the main app bundle (not installer wrapper).
+	# In newer versions (3.1.1+), the DMG contains "Kimi Installer.app" which
+	# wraps the actual "Kimi.app" inside Contents/Helpers/.
+	# Prefer the bundle that contains app.asar in its Resources dir.
+	APP_BUNDLE_DIR="$(find "$extract_dir" -maxdepth 6 -name "*.app" -type d 2>/dev/null | while read -r app; do
+		if [ -f "$app/Contents/Resources/app.asar" ]; then
+			echo "$app"
+			break
+		fi
+	done)"
+	# Fallback: first .app at reasonable depth
+	[ -n "$APP_BUNDLE_DIR" ] || APP_BUNDLE_DIR="$(find "$extract_dir" -maxdepth 4 -name "*.app" -type d 2>/dev/null | head -n1)"
 	[ -n "$APP_BUNDLE_DIR" ] || die "no .app bundle found in DMG (extract dir: $extract_dir; 7zz exit $rc)"
 	info "app bundle: $APP_BUNDLE_DIR"
 	export APP_BUNDLE_DIR
