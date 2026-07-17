@@ -61,9 +61,18 @@ jobs:
         if: ${{ inputs.build_appimage }}
         run: make appimage
 
-      - name: Upload artifacts
+      - name: Upload .deb
+        if: ${{ inputs.build_deb }}
         uses: actions/upload-artifact@v4
         with:
-          name: kimi-work-linux-packages
-          path: dist/*
+          name: kimi-work-linux-deb
+          path: dist/*.deb
+          retention-days: 7
+
+      - name: Upload AppImage
+        if: ${{ inputs.build_appimage }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimi-work-linux-appimage
+          path: dist/*.AppImage
           retention-days: 7
