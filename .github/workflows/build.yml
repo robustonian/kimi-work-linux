@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_deb:
+        description: 'Build .deb package'
+        required: false
+        default: true
+        type: boolean
+      build_appimage:
+        description: 'Build AppImage package'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            curl python3 unzip make build-essential \
+            dpkg-dev libarchive-tools \
+            python3-pil nodejs npm
+
+      - name: Install project dependencies
+        run: make install-deps
+
+      - name: Inspect upstream DMG
+        run: make inspect
+
+      - name: Build app
+        run: make build-app
+
+      - name: Build .deb
+        if: ${{ inputs.build_deb }}
+        run: make deb
+
+      - name: Build AppImage
+        if: ${{ inputs.build_appimage }}
+        run: make appimage
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimi-work-linux-packages
+          path: dist/*
+          retention-days: 7
