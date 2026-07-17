@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_deb:
+        description: 'Build .deb package'
+        required: false
+        default: true
+        type: boolean
+      build_appimage:
+        description: 'Build AppImage package'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            curl python3 unzip make build-essential \
+            dpkg-dev python3-pil libfuse2
+
+      - name: Install project dependencies
+        run: make install-deps
+
+      - name: Inspect upstream DMG
+        run: |
+          # Show extraction output for debugging
+          export DEBUG=1
+          make inspect || {
+            echo "=== Debug: DMG extract contents ==="
+            ls -la dmg-extract/ 2>/dev/null || true
+            find dmg-extract -name "*.app" -type d 2>/dev/null || true
+            find dmg-extract -name "app.asar" 2>/dev/null || true
+            find dmg-extract -name "*.asar" 2>/dev/null || true
+            exit 1
+          }
+
+      - name: Build app
+        run: make build-app
+
+      - name: Build .deb
+        if: ${{ inputs.build_deb }}
+        run: make deb
+
+      - name: Build AppImage
+        if: ${{ inputs.build_appimage }}
+        run: make appimage
+
+      - name: Upload .deb
+        if: ${{ inputs.build_deb }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimi-work-linux-deb
+          path: dist/*.deb
+          retention-days: 7
+
+      - name: Upload AppImage
+        if: ${{ inputs.build_appimage }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: kimi-work-linux-appimage
+          path: dist/*.AppImage
+          retention-days: 7
