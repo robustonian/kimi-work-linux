@@ -155,7 +155,23 @@ extract_dmg() {
 		die "7zz extraction failed (exit $rc)"
 	fi
 
-	APP_BUNDLE_DIR="$(find "$extract_dir" -maxdepth 4 -name "*.app" -type d 2>/dev/null | head -n1)"
+	# 7zz materializes APFS xattrs as "<file>:com.apple.*" sidecar files.
+	# They double directory-entry counts and break the daimon provisioning
+	# integrity check (expected 178 entries in app/daimon/dist/_internal).
+	find "$extract_dir" -type f -name '*:com.apple*' -delete 2>/dev/null || true
+
+	# Newer DMGs (≥3.2.x) wrap the real app in an installer bundle:
+	# "Kimi Installer.app/Contents/Helpers/Kimi.app". Prefer the bundle that
+	# actually contains Resources/app.asar; fall back to the first .app found.
+	local found=""
+	APP_BUNDLE_DIR=""
+	while IFS= read -r found; do
+		if [ -f "$found/Contents/Resources/app.asar" ]; then
+			APP_BUNDLE_DIR="$found"
+			break
+		fi
+		[ -n "$APP_BUNDLE_DIR" ] || APP_BUNDLE_DIR="$found"
+	done < <(find "$extract_dir" -maxdepth 6 -name "*.app" -type d 2>/dev/null)
 	[ -n "$APP_BUNDLE_DIR" ] || die "no .app bundle found in DMG (extract dir: $extract_dir; 7zz exit $rc)"
 	info "app bundle: $APP_BUNDLE_DIR"
 	export APP_BUNDLE_DIR

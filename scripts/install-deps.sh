@@ -35,11 +35,23 @@ ensure_7zz() {
 
 	local bin_dir="$HOME/.local/bin"
 	mkdir -p "$bin_dir"
-	local ver="2409"
-	local url="https://www.7-zip.org/a/7z${ver}-linux-${arch}.tar.xz"
+	local ver="2603"
 	local tmp; tmp="$(mktemp -d)"
-	info "bootstrapping 7zz ${ver} from $url"
-	if curl -fsSL "$url" -o "$tmp/7zz.tar.xz"; then
+	# 7-zip.org drops old release tarballs from /a/ when a new version ships,
+	# so try the official site first and fall back to the GitHub release.
+	local urls=(
+		"https://www.7-zip.org/a/7z${ver}-linux-${arch}.tar.xz"
+		"https://github.com/ip7z/7zip/releases/download/${ver}/7z${ver}-linux-${arch}.tar.xz"
+	)
+	local downloaded=0 url
+	for url in "${urls[@]}"; do
+		info "bootstrapping 7zz ${ver} from $url"
+		if curl -fsSL "$url" -o "$tmp/7zz.tar.xz"; then
+			downloaded=1
+			break
+		fi
+	done
+	if [ "$downloaded" = 1 ]; then
 		tar -xJf "$tmp/7zz.tar.xz" -C "$tmp"
 		install -m 0755 "$tmp/7zz" "$bin_dir/7zz" 2>/dev/null || cp "$tmp/7zz" "$bin_dir/7zz"
 		chmod +x "$bin_dir/7zz"
